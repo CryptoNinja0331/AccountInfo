@@ -1,0 +1,62 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Export HTML To Doc</title><style>body,p{font-family:-apple-system,BlinkMacSystemFont,Helvetica Neue,Arial,Roboto,Oxygen-Sans,Ubuntu,Cantarell,sans-serif;margin:0}body{border:0;font-weight:400;padding:0 48px 48px;background-color:#fafbfc;color:#2f3639;box-sizing:border-box;font-size:16px;overflow:hidden;max-width:800px;white-space:break-spaces}h2,p{border:0;font-size:100%;font-weight:400;white-space:break-spaces}*,:after,:before{box-sizing:inherit}.name_sample,.summary{width:fit-content;block-size:fit-content}.section{display:flex;flex-direction:column}p{padding:0}h2{padding:20px}.section .section_content{font-size:12px;margin-left:20px}</style></head><body>
+      <div class="name_sample">
+          <p>Robin Doe
+123 Main St.
+Anytown, CA 12345
+(123) 456-7890
+robin.doe@example.com
+</p>
+      </div>
+      <div class="summary section">
+        <h2 class="header"><b>SUMMARY</b></h2>
+        <div class="section_content">
+          <p>A highly motivated Web Scraping Professional with 3+ years of experience in extracting data from various websites. My expertise lies in developing scripts to collect data, creating and managing data pipelines, and using web scraping tools. Experienced in using APIs, HTML, and CSS. Possess strong analytical and problem solving skills. 
+</p>
+        </div>
+      </div>
+      <div class="experience section">
+        <h2 class="header"><b>EXPERIENCE</b></h2>
+        <div class="section_content">
+          <p>ABC Company, Anytown, CA
+Web Scraper, 2016 - Present 
+
+<br>• Develop scripts to extract data from multiple websites and maintain the data pipelines 
+<br>• Implement web scraping solutions to extract data from various websites and store them in databases 
+<br>• Analyze data from websites, identify patterns and trends, and present them in easy-to-understand reports 
+<br>• Optimize web scraping processes to improve the speed and accuracy of data extraction 
+</p><p>XYZ Company, Anytown, CA
+Web Scraper, 2014-2016 
+
+<br>• Developed scripts to collect data from multiple websites, ensuring that data is accurate and up-to-date 
+<br>• Analyzed HTML and CSS code to identify and extract data from websites 
+<br>• Created and maintained data pipelines for data extraction, cleaning, and storage 
+<br>• Developed web scraping solutions to collect data from various websites and stored them in databases 
+</p><p>LMN Company, Anytown, CA
+Web Scraper, 2011-2014 
+
+<br>• Developed scripts to extract data from various websites, ensuring data accuracy and quality 
+<br>• Used web scraping tools such as Beautiful Soup and Scrapy to collect data from websites 
+<br>• Utilized APIs, HTML, and CSS to locate and extract data from websites 
+<br>• Implemented web scraping solutions to collect data from multiple websites and stored them in databases 
+</p>
+        </div>
+      </div>
+      <div class="education section">
+        <h2 class="header"><b>EDUCATION</b></h2>
+        <div class="section_content">
+          <p>ABC University, Anytown, CA
+Bachelor of Science in Computer Science, 2011-2014
+</p>
+        </div>
+      </div>
+      <div class="skills section">
+        <h2 class="header"><b>ADDITIONAL SKILLS</b></h2>
+        <div class="section_content">
+          <p><br>• Proficient in Python, HTML, CSS, JavaScript, and SQL 
+<br>• Strong knowledge of APIs, web scraping tools, and data pipelines 
+<br>• Excellent problem solving and analytical skills 
+<br>• Able to work independently and as part of a team
+</p>
+        </div>
+      </div>
+   </body></html>

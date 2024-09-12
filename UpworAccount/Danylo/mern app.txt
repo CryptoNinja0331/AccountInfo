@@ -1,0 +1,21 @@
+Title: Performance improvement in MERN App
+
+JD:  Hello All,
+I want MERN developer for modifications in the websites and maintain websites.Candidate have a deep knowledge about the work in MERN,
+Site : vidibattle.com
+Please check latest code : https://tinyurl.com/vidibattle-code
+1. When you register and fail to fill in a required field, a popup will be displayed informing you that the required field must be entered.
+2. when a user uploads a post, they can edit it afterward. If a user adds a hashtag and another user clicks on that tag, all posts related to that hashtag will be displayed. For example, if a user uploads a reel with the hashtag #INDIA and another user clicks on #INDIA, only reels with the #INDIA hashtag will be shown.
+3. We need to implement notifications similar to Instagram. When someone follows us, we should receive a notification. We should also be notified when someone likes our post, indicating "X user likes your post," along with the view and share counts of that post. Additionally, when someone sends a message, the user should get a notification about the number of unread messages, with the latest message displayed at the top. and on the footer also indicate the unread messages in your inbox.
+4. When a user shares a reel via message, a single tick should appear if the recipient's internet is off. When the reel is received, it should show a double tick, and when viewed, the tick should change color, similar to WhatsApp. Additionally, when a shared reel is clicked, related reels should be displayed in a scrollable format, just like on Instagram.
+5. We need to redesign the UI to enhance its attractiveness, particularly focusing on the reels section, which is currently quite basic. Additionally, I aim to implement a double-tap functionality for liking posts. Furthermore, when users scroll, the entire DIV should scroll, without content getting stuck between two posts in mobile view.
+6. We need to create an advertisement section where administrators can insert multiple ads at specified intervals after a certain number of posts. These ads can be either in image or Reels format, and their duration should be adjustable based on administrative settings. Users should be provided with an option to close ads after a predefined time period, ensuring a seamless user experience while interacting with the platform's content.
+7. We need to add a button to the footer for all posts.
+CONDITIONS :- Must full time freelancer, and you have to work full time also can do work on weekend too.
+- You have to give me daily update and upload everything on server.- If you failed to give me update I'll end contract and you have to refund.
+- WORK MUST BE PROPERLY DONE ON TIME WITHOUT BUGS, IF YOU CAN'T I'LL TAKE AN ACTION ON YOU.
+Please share time and cost (Max budget is $50)Once you complete properly task I'll give you 5 STAR rating.
+Please don't invest your connect if you are not ready with this budget.
+Thanks.
+
+budget :hourly 25$

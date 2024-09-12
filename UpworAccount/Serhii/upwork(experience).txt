@@ -1,0 +1,74 @@
+✅Top-nortch Web Developer | Full Stack | Shopify | WordPress | Odoo✅
+
+✅ Summary
+
+I have been working for the last 5+ years for Shopify, WordPress, Odoo and Full Stack development.
+I have expertise in Shopify Store Development, Extension Development, 3rd Party, Gateway/App/Plugin/Script Integration, PSD to Shopify Conversion, and Theme Development. I’m here to bring your ideal store into life. Having built many Shopify stores for both companies and individual entrepreneurs, my skills and quality is proven absolutely.
+
+My Expertise:
+
+Shopify Basic/Plus Expertise:
+
+✅ Shopify store development, theme installation, and customization
+✅ Shopify Apps development ( Private and Public)
+✅ 3rd Party APIs integration, CRM Integration, Email automation and Marketing tool integration (e.g., Klaviyo, Omnisend, Conversio), Payment gateway integration, Accounting tool integration (Quickbooks, Freshbooks, ERP, Zoho, Xero), POS systems integration, Order automation, Shipping company tool integration, and any 3rd party tool integration.
+✅ PSD, Adobe XD, Sketch, Figma, Invision to Shopify conversion
+✅ Custom Theme development (Private or Shopify)
+✅ Customized Shopify cart and Dynamic checkout.
+✅ Redesigning Shopify stores.
+✅ Writing custom code and features.
+✅ Chat support: Twilio, XMPP, Quick box, OpenFire integration
+✅ Social integration: Facebook, Twitter, Spotify, SoundCloud, Deezer, Instagram
+
+WordPress/WooCommerce Expertise:
+
+✅ WordPress/WooCommerce development
+✅ WordPress Theme Development and Customization.
+✅ Custom WordPress website design
+✅ Plugins Installation, Configuration, and Development
+✅ WooCommerce store development and Customization.
+✅ APIs integration with WordPress/WooCommerce
+
+Technology Stack:
+
+🚩 Frontend: HTML, CSS, JavaScript, React, Next.js, Angular, Vue.js
+🚩 Backend: Python, Django, Node.JS, PHP Laravel,
+🚩 Database: MySQL, MongoDB,PostgreSQL
+🚩 Smart Contract Development: Designing and developing secure smart contracts using Solidity or other Ethereum-compatible programming languages.
+🚩 Decentralized Application (dApp) Development: Building decentralized applications on blockchain platforms like Ethereum, Binance Smart Chain, Polygon, Arbitrum or Polkadot.
+🚩 NFT Marketplace Development: Building highly secure and scalable NFT marketplaces like OpenSea and Rarible for EVM blockchains.
+🚩 Blockchain Integration: Integrating blockchain functionalities into existing systems to enable secure transactions, immutability, and transparency. (Eg. MetaMask Integration)
+🚩 Token Development and ICO Consultation: Assisting in the creation of tokens and providing expert advice on conducting Initial Coin Offerings (ICOs).
+
+One thing you should know about me is that I only take on a job when I am 💯 confident that I will do the job better than anyone else.
+
+I am flexible with different time zones to make sure my clients don't have any communication problems.
+
+Free yourself from the technological maze. Hire me on Upwork TODAY!
+
+Regards,
+Serhii...
+
+====================Experience===========================
+
+ Shopify Store Development
+2020/10-
+- Shopify Store Setup & Configuration
+- Responsive Shopify Theme Design (Customizable Templates, Polaris Based Designing)
+- Customized Shopify Store
+- Shopify App Development
+- Shopify Store SEO
+- Shopify Maintenance & Support
+
+
+Front End Shopify Developer
+2019/5-2020/9
+As a Shopify developer, I played a crucial role in elevating our e-commerce capabilities. My focus was on customizing Shopify themes, integrating third-party solutions, and optimizing website performance to meet the specific needs of our organization.  My role centered on delivering tailored, high-quality solutions to enhance our internal online operations and drive business growth.
+
+
+=======================================✅Education✅===================================
+
+Odesa National Polytechnic University
+Master's degree, Computer science
+2016-2019
+

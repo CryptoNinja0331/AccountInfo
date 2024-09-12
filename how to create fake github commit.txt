@@ -1,0 +1,23 @@
+git clone https://github.com/princeton-nlp/SWE-agent.git
+git remote remove origin
+git remote add origin https://github.com/CryptoNinja0331/PortfolioWebsite.git
+
+
+git filter-branch -f --env-filter '
+NEW_NAME="CryptoNinja0331"
+NEW_EMAIL="luckydev0331@gmail.com" 
+if [ "$GIT_COMMITTER_EMAIL" != "$NEW_EMAIL" ]
+then
+export GIT_COMMITTER_NAME="$NEW_NAME"
+export GIT_COMMITTER_EMAIL="$NEW_EMAIL"
+fi
+if [ "$GIT_AUTHOR_EMAIL" != "$NEW_EMAIL" ]
+then
+export GIT_AUTHOR_NAME="$NEW_NAME"
+export GIT_AUTHOR_EMAIL="$NEW_EMAIL"
+fi
+' --tag-name-filter cat -- --branches --tags
+
+git push --all
+git tag --all
+git push --tags
