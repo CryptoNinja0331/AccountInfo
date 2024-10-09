@@ -1,0 +1,559 @@
+import cv2
+import tkinter as tk
+from tkinter import Label, Button, filedialog
+from PIL import Image, ImageTk
+from ultralytics import YOLO
+import torch
+import logging
+import traceback
+import numpy as np
+import os
+import json
+import time  # Importato per calcolare gli FPS
+
+# Configurazione del logging
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Percorso al modello YOLO - Modifica questo percorso con quello corretto sul tuo sistema
+YOLO_MODEL_PATH = r'best.pt'  # Assicurati che il percorso sia corretto
+
+class PortDetectionApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Port Detection Dashboard")
+
+        self.detection_running = False
+        self.splitter_results = {}
+        self.port_status_count = {}
+        self.frame_count = 0
+
+        # Liste degli splitter - solo i primi quattro come richiesto
+        self.left_splitters = ['01', '03']
+        self.right_splitters = ['02', '04']
+        self.detected_left = []
+        self.detected_right = []
+
+        self.conf_threshold = 0.15
+        self.feed_width = 640
+        self.feed_height = 480
+
+        # Inizializza variabili per FPS
+        self.last_time = time.time()
+        self.fps = 0
+
+        self.setup_ui()
+        self.setup_model()
+
+        # Fase corrente del processo
+        self.current_phase = 'detect_splitter'
+        self.current_splitter_num = None
+
+    def setup_ui(self):
+        """Inizializza i componenti dell'interfaccia utente."""
+        self.create_control_frame()
+        self.create_counters_frame()
+        self.create_splitter_frame()
+        self.create_feed_frame()
+
+    def create_control_frame(self):
+        """Crea il pannello di controllo con pulsanti per varie azioni."""
+        control_frame = tk.Frame(self.root, bg="#F4EFE6")
+        control_frame.grid(row=0, column=0, columnspan=6, pady=10, padx=10, sticky="ew")
+
+        buttons = [
+            ("Start Detection", self.start_detection, "#2ECC71"),
+            ("Stop Detection", self.stop_detection, "#E74C3C"),
+            ("New Splitter", self.reset_splitter_detection, "#F39C12"),
+            ("Load Video File", self.load_video, "#9B59B6"),
+            ("Start Video Detection", self.start_video_detection, "#1ABC9C")
+        ]
+
+        for i, (text, command, color) in enumerate(buttons):
+            Button(control_frame, text=text, command=command, bg=color,
+                   fg="white", font=("Helvetica", 12, "bold")
+                   ).grid(row=0, column=i, padx=5)
+
+    def reset_splitter_detection(self):
+        """Resetta il processo di rilevazione degli splitter."""
+        self.detected_left = []
+        self.detected_right = []
+        self.splitter_results.clear()
+        self.current_splitter_num = None
+        self.current_phase = 'detect_splitter'
+        logging.info("Rilevazione degli splitter resettata.")
+        # Resetta i pulsanti degli splitter
+        for splitter_frame in self.splitter_frames:
+            for btn in splitter_frame.winfo_children():
+                if isinstance(btn, tk.Button):
+                    btn.configure(bg="#95A5A6")
+        # Resetta i contatori
+        self.update_counter_labels()
+
+    def create_counters_frame(self):
+        """Crea il frame che mostra i contatori delle rilevazioni."""
+        self.counters_frame = tk.Frame(self.root, bg="#E9DFCE")
+        self.counters_frame.grid(row=1, column=0, columnspan=6, pady=10,
+                                 padx=10, sticky="ew")
+
+        self.counter_labels = {}
+        counters = ["Detected Splitters", "Completed Splitters",
+                    "Detected Ports", "Connected Ports", "Capped Ports",
+                    "Uncapped Ports", "FPS"]  # Aggiunto "FPS"
+
+        for i, counter in enumerate(counters):
+            label = tk.Label(self.counters_frame, text=f"{counter}: 0",
+                             bg="#E9DFCE", fg="#1C160C",
+                             font=("Helvetica", 12))
+            label.grid(row=i // 3, column=i % 3, padx=10, sticky="w")
+            self.counter_labels[counter] = label
+
+    def create_splitter_frame(self):
+        """Crea il frame contenente i pulsanti degli splitter."""
+        splitter_frame = tk.Frame(self.root, bg="#FFFFFF")
+        splitter_frame.grid(row=2, column=0, columnspan=2, padx=10, pady=10)
+
+        self.splitter_frames = []
+        num_splitters = len(self.left_splitters) + len(self.right_splitters)
+        for i in range(num_splitters):
+            frame = tk.Frame(splitter_frame, bg="#F4EFE6", pady=5)
+            frame.grid(row=i, column=0, pady=5)
+            if i < len(self.left_splitters):
+                splitter_num = self.left_splitters[i]
+            else:
+                splitter_num = self.right_splitters[i - len(self.left_splitters)]
+            tk.Label(frame, text=f"Splitter {splitter_num}", bg="#F4EFE6",
+                     fg="#1C160C", font=("Helvetica", 12)
+                     ).grid(row=0, column=0, columnspan=8)
+
+            for j in range(16):
+                btn = tk.Button(frame, text=str(j + 1), width=5, height=2,
+                                bg="#95A5A6", fg="white",
+                                font=("Helvetica", 10, "bold"))
+                btn.grid(row=1 + (j // 8), column=j % 8, padx=2, pady=2)
+            self.splitter_frames.append(frame)
+
+    def create_feed_frame(self):
+        """Crea l'area di visualizzazione del feed video."""
+        self.feed_frame = tk.Frame(self.root, bg="#FFFFFF")
+        self.feed_frame.grid(row=2, column=2, columnspan=4, padx=10, pady=10)
+        self.feed_label = Label(self.feed_frame)
+        self.feed_label.grid(row=0, column=0)
+
+    def setup_model(self):
+        """Inizializza il modello YOLO per l'object detection."""
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        logging.info(f"Using device: {self.device}")
+        try:
+            # Carica il modello YOLO
+            self.model = YOLO(YOLO_MODEL_PATH)
+            if self.device == 'cuda':
+                self.model.to('cuda')
+                logging.info("YOLO model spostato su CUDA.")
+            else:
+                logging.info("YOLO model utilizza la CPU.")
+            logging.info(f"Classi del modello caricate: {self.model.names}")
+        except Exception as e:
+            logging.error("Errore nel caricamento del modello YOLO:")
+            logging.error(f"Tipo di eccezione: {type(e).__name__}")
+            logging.error(f"Messaggio dell'eccezione: {e}")
+            logging.error(traceback.format_exc())
+            self.model = None
+        self.cap = None
+
+    def start_detection(self):
+        """Avvia il processo di rilevazione utilizzando la webcam."""
+        if self.model is None:
+            logging.error("Modello non caricato correttamente. Impossibile avviare la rilevazione.")
+            return
+
+        self.cap = cv2.VideoCapture(0)
+        if not self.cap.isOpened():
+            logging.error("Impossibile aprire la webcam")
+            return
+
+        # Imposta la risoluzione della webcam
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+        self.detection_running = True
+        self.splitter_results.clear()
+        self.frame_count = 0
+        self.detected_left = []
+        self.detected_right = []
+        self.current_splitter_num = None
+        self.current_phase = 'detect_splitter'
+        logging.info("Avvio della rilevazione.")
+        self.update_feed()
+
+    def stop_detection(self):
+        """Ferma il processo di rilevazione."""
+        self.detection_running = False
+        if self.cap:
+            self.cap.release()
+        self.feed_label.configure(image='')
+        logging.info("Rilevazione fermata.")
+
+    def load_video(self):
+        """Carica un file video per la rilevazione."""
+        video_path = filedialog.askopenfilename(title="Seleziona un file video",
+                                                filetypes=[("Video Files",
+                                                            "*.mp4 *.avi *.mov *.mkv *.flv")])
+        if video_path:
+            self.cap = cv2.VideoCapture(video_path)
+            if not self.cap.isOpened():
+                logging.error(f"Impossibile aprire il file video: {video_path}")
+                return
+            self.splitter_results.clear()
+            self.frame_count = 0
+            self.detected_left = []
+            self.detected_right = []
+            self.current_splitter_num = None
+            self.current_phase = 'detect_splitter'
+            logging.info(f"File video caricato: {video_path}")
+            self.start_video_detection()
+
+    def start_video_detection(self):
+        """Avvia il processo di rilevazione utilizzando il video caricato."""
+        if self.cap and self.cap.isOpened():
+            self.detection_running = True
+            logging.info("Avvio della rilevazione sul video.")
+            self.update_feed()
+        else:
+            logging.error("Nessun video caricato o video non aperto correttamente")
+
+    def update_feed(self):
+        """Cattura ed elabora i frame video."""
+        if not self.detection_running or not self.cap:
+            return
+
+        ret, frame = self.cap.read()
+        if not ret:
+            self.stop_detection()
+            logging.info("Fine del video o impossibile leggere il frame.")
+            return
+
+        logging.debug("Frame catturato dalla webcam/video.")
+
+        frame = cv2.resize(frame, (self.feed_width, self.feed_height))
+        logging.debug(f"Frame ridimensionato a {self.feed_width}x{self.feed_height}.")
+
+        self.frame_count += 1
+        try:
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            logging.debug(f"Dimensioni del frame: {frame_rgb.shape}")
+
+            # Calcola gli FPS
+            current_time = time.time()
+            delta = current_time - self.last_time
+            self.fps = 1 / delta if delta > 0 else 0
+            self.last_time = current_time
+
+            # Effettua la predizione utilizzando il modello YOLO
+            results = self.model.predict(source=frame_rgb, device=self.device,
+                                         verbose=False, conf=self.conf_threshold)
+            detections = results[0]
+
+            logging.debug(f"Rilevazioni: {detections}")
+
+            annotated_frame = frame.copy()
+            self.process_detections(annotated_frame, detections)
+        except Exception as e:
+            logging.error("Errore nell'elaborazione del frame:")
+            logging.error(traceback.format_exc())
+            annotated_frame = frame
+
+        # Aggiorna il feed video nell'interfaccia grafica
+        frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(frame_rgb)
+        imgtk = ImageTk.PhotoImage(image=img)
+        self.feed_label.imgtk = imgtk
+        self.feed_label.configure(image=imgtk)
+        logging.debug("Feed video aggiornato nell'interfaccia grafica.")
+
+        # Aggiorna i contatori, incluso FPS
+        self.update_counter_labels()
+
+        if self.detection_running:
+            self.feed_label.after(10, self.update_feed)
+
+    def process_detections(self, frame, detections):
+        """Elabora le rilevazioni in base alla fase corrente."""
+        if self.current_phase == 'detect_splitter':
+            self.detect_splitter_and_barcode(frame, detections)
+        elif self.current_phase == 'detect_ports':
+            self.detect_ports(frame, detections)
+
+    def detect_splitter_and_barcode(self, frame, detections):
+        """Rileva splitter e decodifica i loro numeri."""
+        barcode_detected = False
+        splitter_detected = False
+
+        logging.debug("Inizio della rilevazione di splitter e barcode.")
+
+        for i, det in enumerate(detections.boxes):
+            conf = float(det.conf.item()) if isinstance(det.conf, torch.Tensor) else float(det.conf)
+            cls = int(det.cls)
+            logging.debug(f"Classe rilevata: {cls} con confidenza: {conf}")
+
+            if conf >= self.conf_threshold:
+                if 1 <= cls <= 4:  # Codici a barre numerati
+                    detected_splitter_num = self.get_splitter_num_from_class(cls)
+                    if detected_splitter_num:
+                        if detected_splitter_num not in self.splitter_results:
+                            self.current_splitter_num = detected_splitter_num
+                            self.splitter_results[detected_splitter_num] = []
+                            barcode_detected = True
+                            logging.info(f"Splitter assegnato: {detected_splitter_num}")
+                        else:
+                            logging.info(f"Splitter {detected_splitter_num} già rilevato.")
+                        # Disegna il bounding box
+                        self.annotate_frame_with_mask(frame, det, None, cls,
+                                                      det.conf, self.model.names)
+                elif cls == 12:  # Splitter
+                    splitter_detected = True
+                    splitter_num = self.assign_splitter_number(det)
+                    if splitter_num:
+                        if splitter_num not in self.splitter_results:
+                            self.current_splitter_num = splitter_num
+                            self.splitter_results[splitter_num] = []
+                            splitter_detected = True
+                            barcode_detected = True
+                            logging.info(f"Splitter {splitter_num} rilevato con successo.")
+                        else:
+                            logging.info(f"Splitter {splitter_num} già rilevato.")
+                    # Disegna il bounding box
+                    self.annotate_frame_with_mask(frame, det, None, cls,
+                                                  det.conf, self.model.names)
+
+        if barcode_detected and splitter_detected:
+            logging.info(f"Splitter {self.current_splitter_num} rilevato con successo.")
+            self.current_phase = 'detect_ports'
+        else:
+            logging.warning("Nessun splitter o barcode rilevato. Continuando.")
+
+    def get_splitter_num_from_class(self, cls):
+        """Mappa la classe al numero dello splitter."""
+        class_to_splitter = {
+            1: '01',
+            2: '02',
+            3: '03',
+            4: '04'
+        }
+        splitter_num = class_to_splitter.get(cls, None)
+        if splitter_num:
+            logging.info(f"Classe {cls} mappata a Splitter {splitter_num}")
+        else:
+            logging.warning(f"Classe {cls} non mappata a nessun Splitter.")
+        return splitter_num
+
+    def assign_splitter_number(self, det):
+        """Assegna un numero allo splitter basandosi sulla posizione."""
+        coordinates = det.xyxy[0].cpu().numpy()
+        x1, _, x2, _ = coordinates
+        x_center = (x1 + x2) / 2
+
+        if x_center < self.feed_width / 2:
+            if len(self.detected_left) < len(self.left_splitters):
+                splitter_num = self.left_splitters[len(self.detected_left)]
+                self.detected_left.append(splitter_num)
+                logging.info(f"Splitter assegnato a sinistra: {splitter_num}")
+                return splitter_num
+            else:
+                logging.warning("Tutti gli splitter a sinistra assegnati.")
+                return None
+        else:
+            if len(self.detected_right) < len(self.right_splitters):
+                splitter_num = self.right_splitters[len(self.detected_right)]
+                self.detected_right.append(splitter_num)
+                logging.info(f"Splitter assegnato a destra: {splitter_num}")
+                return splitter_num
+            else:
+                logging.warning("Tutti gli splitter a destra assegnati.")
+                return None
+
+    def detect_ports(self, frame, detections):
+        """Rileva le porte associate allo splitter corrente."""
+        if self.current_splitter_num is None:
+            logging.error("Numero dello splitter non impostato.")
+            self.current_phase = 'detect_splitter'
+            return
+
+        self.port_status_count = {
+            "Detected Ports": 0,
+            "Connected Ports": 0,
+            "Capped Ports": 0,
+            "Uncapped Ports": 0,
+            "Detected Splitters": 0
+        }
+
+        port_detections = []
+        for i, det in enumerate(detections.boxes):
+            conf = float(det.conf.item()) if isinstance(det.conf, torch.Tensor) else float(det.conf)
+            cls = int(det.cls)
+            if conf >= self.conf_threshold and cls in [9, 10, 11]:
+                port_detections.append((i, det))
+
+        if not port_detections:
+            logging.info("Nessuna porta rilevata in questo frame.")
+            return
+
+        for i, det in port_detections:
+            cls = int(det.cls)
+            mask = detections.masks.data[i] if detections.masks is not None else None
+            self.annotate_frame_with_mask(frame, det, mask, cls, det.conf,
+                                          self.model.names)
+            try:
+                if not any(existing_cls == cls and self.is_same_detection(existing_det, det)
+                           for existing_cls, existing_det in
+                           self.splitter_results[self.current_splitter_num]):
+                    self.splitter_results[self.current_splitter_num].append((cls, det))
+                    logging.debug(f"Porte aggiornate per splitter {self.current_splitter_num}.")
+            except KeyError:
+                logging.error(f"Chiave {self.current_splitter_num} non trovata.")
+                self.current_phase = 'detect_splitter'
+                return
+
+        self.update_splitter_buttons(self.current_splitter_num, port_detections)
+        self.update_counter_labels()
+
+        if len(self.splitter_results[self.current_splitter_num]) >= 16:
+            logging.info(f"Tutte le porte per splitter {self.current_splitter_num} rilevate.")
+            self.report_to_digital_twin()
+            self.current_phase = 'detect_splitter'
+            self.current_splitter_num = None
+
+    def is_same_detection(self, det1, det2, iou_threshold=0.5):
+        """Confronta due rilevazioni per vedere se si sovrappongono."""
+        box1 = det1.xyxy[0].cpu().numpy()
+        box2 = det2.xyxy[0].cpu().numpy()
+
+        x_left = max(box1[0], box2[0])
+        y_top = max(box1[1], box2[1])
+        x_right = min(box1[2], box2[2])
+        y_bottom = min(box1[3], box2[3])
+
+        if x_right < x_left or y_bottom < y_top:
+            return False
+
+        intersection_area = (x_right - x_left) * (y_bottom - y_top)
+        box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+        box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+        iou = intersection_area / float(box1_area + box2_area - intersection_area)
+        return iou >= iou_threshold
+
+    def annotate_frame_with_mask(self, frame, box, mask, cls, conf, class_names):
+        """Annota il frame con bounding box e confidenza."""
+        class_colors = {
+            1: (0, 0, 0),        # Nero per codice a barre 1
+            2: (0, 0, 0),        # Nero per codice a barre 2
+            3: (0, 0, 0),        # Nero per codice a barre 3
+            4: (0, 0, 0),        # Nero per codice a barre 4
+            9: (0, 255, 0),      # Verde per porta collegata
+            10: (0, 255, 255),   # Giallo per porta con tappino verde
+            11: (0, 0, 255),     # Rosso per porta senza tappino
+            12: (255, 0, 0)      # Blu per splitter
+        }
+
+        color = class_colors.get(cls, (255, 255, 255))  # Bianco per classi sconosciute
+
+        coordinates = box.xyxy[0].cpu().numpy()
+        if len(coordinates) < 4:
+            logging.error(f"Coordinate insufficienti: {coordinates}")
+            return
+
+        x1, y1, x2, y2 = map(int, coordinates)
+
+        # Disegna la bounding box
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+        logging.debug(f"Bounding box disegnata per classe {cls}.")
+
+        # Confidenza
+        conf_value = float(conf.item()) if isinstance(conf, torch.Tensor) else float(conf)
+        cv2.putText(frame, f'{conf_value:.2f}', (x1, max(y1 - 10, 0)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+    def update_splitter_buttons(self, splitter_num, port_detections):
+        """Aggiorna i pulsanti degli splitter basati sulle rilevazioni."""
+        try:
+            if splitter_num in self.left_splitters:
+                splitter_idx = self.left_splitters.index(splitter_num)
+            elif splitter_num in self.right_splitters:
+                splitter_idx = (self.right_splitters.index(splitter_num) +
+                                len(self.left_splitters))
+            else:
+                logging.error(f"Splitter {splitter_num} non trovato.")
+                return
+
+            splitter_frame = self.splitter_frames[splitter_idx]
+        except (IndexError, ValueError) as e:
+            logging.error(f"Errore nel localizzare il frame: {str(e)}")
+            return
+
+        for i, det in port_detections:
+            try:
+                cls = int(det.cls)
+                class_colors = {
+                    9: '#00FF00',    # Verde
+                    10: '#FFFF00',   # Giallo
+                    11: '#FF0000',   # Rosso
+                }
+                color = class_colors.get(cls, "#FFFFFF")
+                coordinates = det.xyxy[0].cpu().numpy()
+                x1, _, x2, _ = coordinates
+                x_center = (x1 + x2) / 2
+                port_index = int((x_center / self.feed_width) * 16)
+                if 0 <= port_index < 16:
+                    btn = splitter_frame.winfo_children()[port_index + 1]  # +1 per saltare l'etichetta
+                    btn.configure(bg=color)
+                    logging.debug(f"Porta {port_index + 1} aggiornata.")
+                else:
+                    logging.warning(f"Indice porta fuori range: {port_index}")
+            except Exception as e:
+                logging.error(f"Errore nell'aggiornamento dei pulsanti: {str(e)}")
+
+    def update_counter_labels(self):
+        """Aggiorna le etichette dei contatori."""
+        total_ports = sum(len(ports) for ports in self.splitter_results.values())
+        connected_ports = sum(1 for ports in self.splitter_results.values()
+                              for cls, _ in ports if cls == 9)
+        capped_ports = sum(1 for ports in self.splitter_results.values()
+                           for cls, _ in ports if cls == 10)
+        uncapped_ports = sum(1 for ports in self.splitter_results.values()
+                             for cls, _ in ports if cls == 11)
+        detected_splitters = len(self.splitter_results)
+        completed_splitters = detected_splitters
+
+        # Aggiorna i contatori
+        self.counter_labels["Detected Ports"].config(text=f"Detected Ports: {total_ports}")
+        self.counter_labels["Connected Ports"].config(text=f"Connected Ports: {connected_ports}")
+        self.counter_labels["Capped Ports"].config(text=f"Capped Ports: {capped_ports}")
+        self.counter_labels["Uncapped Ports"].config(text=f"Uncapped Ports: {uncapped_ports}")
+        self.counter_labels["Detected Splitters"].config(text=f"Detected Splitters: {detected_splitters}")
+        self.counter_labels["Completed Splitters"].config(text=f"Completed Splitters: {completed_splitters}")
+
+        # Aggiorna FPS
+        self.counter_labels["FPS"].config(text=f"FPS: {self.fps:.2f}")
+
+        logging.debug("Contatori aggiornati.")
+
+    def report_to_digital_twin(self):
+        """Invia i dati al digital twin."""
+        data = {}
+        for splitter_num, ports in self.splitter_results.items():
+            data[splitter_num] = [self.model.names[cls] for cls, _ in ports]
+
+        with open('digital_twin_data.json', 'w') as f:
+            json.dump(data, f, indent=4)
+
+        logging.info("Dati inviati al digital twin (salvati in 'digital_twin_data.json').")
+
+if __name__ == "__main__":
+    if torch.cuda.is_available():
+        logging.info("CUDA disponibile. Uso GPU.")
+    else:
+        logging.warning("CUDA non disponibile. Uso CPU.")
+
+    root = tk.Tk()
+    app = PortDetectionApp(root)
+    root.mainloop()
